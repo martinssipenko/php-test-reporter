@@ -6,23 +6,26 @@ use Guzzle\Http\Exception\ClientErrorResponseException;
 
 class ApiClient
 {
-    protected $client;
     protected $apiHost;
+    protected $certFile;
 
     public function __construct()
     {
-        $this->client = new Client();
-        $this->apiHost = "https://codeclimate.com";
+        $this->apiHost  = "https://codeclimate.com";
+        $this->certFile = dirname(__FILE__) . "/../../../cacert.pem";
 
         if (isset($_SERVER["CODECLIMATE_API_HOST"])) {
           $this->apiHost = $_SERVER["CODECLIMATE_API_HOST"];
         }
-
     }
 
     public function send($json)
     {
-        $request = $this->client->createRequest('POST', $this->apiHost."/test_reports");
+        $client = new Client($this->apiHost, array(
+          "ssl.certificate_authority" => $this->certFile
+        ));
+
+        $request  = $client->createRequest('POST', "/test_reports");
         $response = false;
 
         $request->setHeader("User-Agent", "Code Climate (PHP Test Reporter v".Version::VERSION.")");
@@ -30,7 +33,7 @@ class ApiClient
         $request->setBody($json);
 
         try {
-            $response = $this->client->send($request);
+            $response = $client->send($request);
         } catch (ClientErrorResponseException $e) {
             $response = $e->getResponse();
         }
